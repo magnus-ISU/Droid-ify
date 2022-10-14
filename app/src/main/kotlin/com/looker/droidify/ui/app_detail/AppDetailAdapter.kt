@@ -565,7 +565,8 @@ class AppDetailAdapter(private val callbacks: Callbacks) :
 		context: Context, packageName: String,
 		products: List<Pair<Product, Repository>>,
 		installedItem: InstalledItem?,
-		incompatible: Boolean
+		showIncompatible: Boolean,
+		displayScreenshots: Boolean,
 	) {
 		val productRepository = Product.findSuggested(products, installedItem) { it.first }
 		items.clear()
@@ -576,30 +577,17 @@ class AppDetailAdapter(private val callbacks: Callbacks) :
 				productRepository.first
 			)
 
-			val screenShotItem = mutableListOf<Item>()
-			screenShotItem += Item.ScreenshotItem(
-				productRepository.first.screenshots,
-				packageName,
-				productRepository.second
-			)
+			if (displayScreenshots) {
+				val screenShotItem = mutableListOf<Item>()
+				screenShotItem += Item.ScreenshotItem(
+					productRepository.first.screenshots,
+					packageName,
+					productRepository.second
+				)
 
-			if (productRepository.first.screenshots.isNotEmpty()) {
-				expanded += ExpandType.SCREENSHOTS
-				if (ExpandType.SCREENSHOTS in expanded) {
-					items += Item.SectionItem(
-						SectionType.SCREENSHOTS,
-						ExpandType.SCREENSHOTS,
-						emptyList(),
-						screenShotItem.size
-					)
+				if (productRepository.first.screenshots.isNotEmpty()) {
+					expanded += ExpandType.SCREENSHOTS
 					items += screenShotItem
-				} else {
-					items += Item.SectionItem(
-						SectionType.SCREENSHOTS,
-						ExpandType.SCREENSHOTS,
-						screenShotItem,
-						0
-					)
 				}
 			}
 
@@ -837,7 +825,7 @@ class AppDetailAdapter(private val callbacks: Callbacks) :
 		val compatibleReleasePairs = products.asSequence()
 			.flatMap { (product, repository) ->
 				product.releases.asSequence()
-					.filter { incompatible || it.incompatibilities.isEmpty() }
+					.filter { showIncompatible || it.incompatibilities.isEmpty() }
 					.map { Pair(it, repository) }
 			}
 			.toList()
