@@ -69,6 +69,7 @@ import com.looker.droidify.utility.extension.resources.setTextSizeScaled
 import com.looker.droidify.utility.extension.resources.sizeScaled
 import com.looker.droidify.widget.StableRecyclerAdapter
 import java.lang.ref.WeakReference
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -366,6 +367,7 @@ class AppDetailAdapter(private val callbacks: Callbacks) :
 		val divider1 = itemView.findViewById<MaterialDivider>(R.id.divider1)!!
 		val targetSdk = itemView.findViewById<MaterialTextView>(R.id.sdk)!!
 		val version = itemView.findViewById<MaterialTextView>(R.id.version)!!
+		val version_recency = itemView.findViewById<MaterialTextView>(R.id.version_recency)!!
 		val size = itemView.findViewById<MaterialTextView>(R.id.size)!!
 		val dev = itemView.findViewById<MaterialCardView>(R.id.dev_block)!!
 	}
@@ -1149,7 +1151,44 @@ class AppDetailAdapter(private val callbacks: Callbacks) :
 				}
 
 				holder.targetSdk.text = sdk.toString()
-				holder.version.text = product?.displayRelease?.version
+
+				var versionString = product?.displayRelease?.version
+				if (versionString != null) {
+					if (Regex("^[0-9]").containsMatchIn(versionString)) {
+						versionString = "v${versionString}"
+					}
+					holder.version.text = versionString
+				} else {
+					holder.version.text = context.getString(stringRes.version_error)
+				}
+
+				val versionTime = product?.displayRelease?.added
+				if (versionTime != null) {
+					try {
+						val releasedTime = LocalDateTime.ofInstant(
+							Instant.ofEpochMilli(versionTime),
+							TimeZone.getDefault().toZoneId()
+						)
+						val releasedDaysAgo = Duration.between(releasedTime, LocalDateTime.now()).toDays()
+						holder.version_recency.text = when (releasedDaysAgo) {
+							0L -> context.getString(stringRes.version_recency_today)
+							1L -> context.getString(stringRes.version_recency_yesterday)
+							in 2..100 -> context.getString(stringRes.version_recency_days_format, releasedDaysAgo)
+							else -> context.getString(stringRes.version_recency_months_format, releasedDaysAgo / 30)
+						}
+					} catch (e: Exception) {
+						Log.e(
+							"AppDetailAdapter",
+							"onBindViewHolder: Date cannot be formatted locally",
+							e
+						)
+						e.printStackTrace()
+						holder.version_recency.text = "$versionTime"
+					}
+				} else {
+					holder.version_recency.text = context.getString(stringRes.version_recency_error)
+				}
+
 				holder.size.text = product?.displayRelease?.size?.formatSize()
 
 				holder.dev.setOnClickListener {
